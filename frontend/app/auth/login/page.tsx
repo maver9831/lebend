@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { supabase } from "@/supabaseClient"
 import Link from "next/link"
 import { Heart, Mail, Lock, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -15,16 +16,42 @@ import { GoogleSignInButton } from "@/components/auth/google-sign-in-button"
 export default function LoginPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [loginEmail, setLoginEmail] = useState("")
+  const [loginPassword, setLoginPassword] = useState("")
+  const [signupEmail, setSignupEmail] = useState("")
+  const [signupPassword, setSignupPassword] = useState("")
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
-
-    // Simuliamo un login
-    setTimeout(() => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
+      password: loginPassword,
+    })
+    if (error) {
+      alert(error.message)
       setIsLoading(false)
-      router.push("/")
-    }, 1500)
+      return
+    }
+    router.push("/")
+  }
+
+  const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsLoading(true)
+    const { data, error } = await supabase.auth.signUp({
+      email: signupEmail,
+      password: signupPassword,
+    })
+    if (error) {
+      alert(error.message)
+      setIsLoading(false)
+      return
+    }
+    if (data.user) {
+      await supabase.from("users").insert({ id: data.user.id })
+    }
+    router.push("/")
   }
 
   return (
@@ -49,17 +76,31 @@ export default function LoginPage() {
               <CardDescription>Inserisci le tue credenziali per accedere al dashboard</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input type="email" placeholder="Email" className="pl-10" required />
+                    <Input
+                      type="email"
+                      placeholder="Email"
+                      className="pl-10"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      required
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input type="password" placeholder="Password" className="pl-10" required />
+                    <Input
+                      type="password"
+                      placeholder="Password"
+                      className="pl-10"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      required
+                    />
                   </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
@@ -95,7 +136,7 @@ export default function LoginPage() {
               <CardDescription>Registrati per iniziare a monitorare la tua salute</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSignup} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <Input placeholder="Nome" required />
                   <Input placeholder="Cognome" required />
@@ -103,13 +144,27 @@ export default function LoginPage() {
                 <div className="space-y-2">
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input type="email" placeholder="Email" className="pl-10" required />
+                    <Input
+                      type="email"
+                      placeholder="Email"
+                      className="pl-10"
+                      value={signupEmail}
+                      onChange={(e) => setSignupEmail(e.target.value)}
+                      required
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input type="password" placeholder="Password" className="pl-10" required />
+                    <Input
+                      type="password"
+                      placeholder="Password"
+                      className="pl-10"
+                      value={signupPassword}
+                      onChange={(e) => setSignupPassword(e.target.value)}
+                      required
+                    />
                   </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>

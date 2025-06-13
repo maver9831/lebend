@@ -4,13 +4,8 @@ import type React from "react"
 
 import { createContext, useContext, useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
-
-type User = {
-  id: string
-  name: string
-  email: string
-  image?: string
-}
+import { supabase } from "@/supabaseClient"
+import type { User } from "@supabase/supabase-js"
 
 type AuthContextType = {
   user: User | null
@@ -34,73 +29,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsClient(true)
   }, [])
 
-  // Simula il controllo dell'autenticazione all'avvio
+  // Recupera l'utente corrente all'avvio e ascolta i cambi di autenticazione
   useEffect(() => {
     if (!isClient) return
 
-    // Controlla se c'è un utente nel localStorage (simulazione)
-    try {
-      const storedUser = localStorage.getItem("health-dashboard-user")
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser()
+      setUser(data.user)
+      setIsLoading(false)
 
-      if (storedUser) {
-        setUser(JSON.parse(storedUser))
+      if (!data.user && !pathname?.startsWith("/auth")) {
+        router.push("/auth/login")
       }
-    } catch (error) {
-      console.error("Errore nel recupero dell'utente:", error)
     }
 
-    setIsLoading(false)
+    getUser()
 
-    // Reindirizza alla pagina di login se non autenticato e non già sulla pagina di login
-    const storedUser = localStorage.getItem("health-dashboard-user")
-    if (!storedUser && !pathname?.startsWith("/auth")) {
-      router.push("/auth/login")
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => {
+      subscription.unsubscribe()
     }
   }, [pathname, router, isClient])
 
   const login = async (email: string, password: string) => {
     setIsLoading(true)
-
-    // Simuliamo un login
-    const mockUser = {
-      id: "user-123",
-      name: "Utente Demo",
-      email: email,
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+    if (error) {
+      alert(error.message)
+      setIsLoading(false)
+      return
     }
-
-    // Salva l'utente nel localStorage
-    if (typeof window !== "undefined") {
-      localStorage.setItem("health-dashboard-user", JSON.stringify(mockUser))
-    }
-    setUser(mockUser)
+    setUser(data.user)
     setIsLoading(false)
     router.push("/")
   }
 
   const loginWithGoogle = async () => {
     setIsLoading(true)
-
-    // Simuliamo un login con Google
-    const mockUser = {
-      id: "google-user-123",
-      name: "Utente Google",
-      email: "utente@gmail.com",
-      image: "https://lh3.googleusercontent.com/a/default-user",
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "google" })
+    if (error) {
+      alert(error.message)
+      setIsLoading(false)
     }
-
-    // Salva l'utente nel localStorage
-    if (typeof window !== "undefined") {
-      localStorage.setItem("health-dashboard-user", JSON.stringify(mockUser))
-    }
-    setUser(mockUser)
-    setIsLoading(false)
-    router.push("/")
   }
 
-  const logout = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("health-dashboard-user")
-    }
+  const logout = async () => {
+    await supabase.auth.signOut()
     setUser(null)
     router.push("/auth/login")
   }

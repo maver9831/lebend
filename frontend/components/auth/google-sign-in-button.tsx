@@ -1,21 +1,19 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { supabase } from "@/supabaseClient"
 
 export function GoogleSignInButton() {
-  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
-
-    // Simuliamo l'autenticazione con Google
-    setTimeout(() => {
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "google" })
+    if (error) {
+      alert(error.message)
       setIsLoading(false)
-      router.push("/")
-    }, 1500)
+    }
   }
 
   return (
